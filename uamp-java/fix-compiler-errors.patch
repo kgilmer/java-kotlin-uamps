@@ -1,0 +1,30 @@
+diff --git a/mobile/src/main/java/com/example/android/uamp/ui/BaseActivity.java b/mobile/src/main/java/com/example/android/uamp/ui/BaseActivity.java
+index a206420..72305dd 100644
+--- a/mobile/src/main/java/com/example/android/uamp/ui/BaseActivity.java
++++ b/mobile/src/main/java/com/example/android/uamp/ui/BaseActivity.java
+@@ -147,10 +147,10 @@ public abstract class BaseActivity extends ActionBarCastActivity implements Medi
+     }
+ 
+     private void connectToSession(MediaSessionCompat.Token token) throws RemoteException {
+-        MediaControllerCompat mediaController = getSupportMediaController();
++        MediaControllerCompat mediaController = MediaControllerCompat.getMediaController(this);
+         if(mediaController == null) {
+             mediaController = new MediaControllerCompat(this, token);
+-            setSupportMediaController(mediaController);
++            MediaControllerCompat.setMediaController(this, mediaController);
+         }
+         mediaController.registerCallback(mMediaControllerCallback);
+ 
+diff --git a/mobile/src/main/java/com/example/android/uamp/ui/FullScreenPlayerActivity.java b/mobile/src/main/java/com/example/android/uamp/ui/FullScreenPlayerActivity.java
+index f2879ec..045e6f8 100644
+--- a/mobile/src/main/java/com/example/android/uamp/ui/FullScreenPlayerActivity.java
++++ b/mobile/src/main/java/com/example/android/uamp/ui/FullScreenPlayerActivity.java
+@@ -214,7 +214,7 @@ public class FullScreenPlayerActivity extends ActionBarCastActivity {
+     }
+ 
+     private void connectToSession(MediaSessionCompat.Token token) throws RemoteException {
+-        MediaControllerCompat mediaController = getSupportMediaController();
++        MediaControllerCompat mediaController = MediaControllerCompat.getMediaController(this);
+         if (mediaController == null) {
+             mediaController = new MediaControllerCompat(FullScreenPlayerActivity.this, token);
+         }

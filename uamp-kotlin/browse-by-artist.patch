@@ -1,0 +1,104 @@
+diff --git a/app/src/main/java/com/example/android/uamp/MediaItemAdapter.kt b/app/src/main/java/com/example/android/uamp/MediaItemAdapter.kt
+index d220374..a855a81 100644
+--- a/app/src/main/java/com/example/android/uamp/MediaItemAdapter.kt
++++ b/app/src/main/java/com/example/android/uamp/MediaItemAdapter.kt
+@@ -71,11 +71,10 @@ class MediaItemAdapter(private val itemClickedListener: (MediaItemData) -> Unit
+             holder.playbackState.setImageResource(mediaItem.playbackRes)
+ 
+             Glide.with(holder.albumArt)
+-                    .load(mediaItem.albumArtUri)
+-                    .into(holder.albumArt)
++                .load(mediaItem.albumArtUri ?: R.drawable.default_art)
++                .into(holder.albumArt)
+         }
+     }
+-
+     override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
+         onBindViewHolder(holder, position, mutableListOf())
+     }
+diff --git a/app/src/main/java/com/example/android/uamp/MediaItemData.kt b/app/src/main/java/com/example/android/uamp/MediaItemData.kt
+index a058d9e..83a3000 100644
+--- a/app/src/main/java/com/example/android/uamp/MediaItemData.kt
++++ b/app/src/main/java/com/example/android/uamp/MediaItemData.kt
+@@ -34,8 +34,8 @@ import com.example.android.uamp.viewmodels.MediaItemFragmentViewModel
+ data class MediaItemData(
+         val mediaId: String,
+         val title: String,
+-        val subtitle: String,
+-        val albumArtUri: Uri,
++        val subtitle: String?,
++        val albumArtUri: Uri?,
+         val browsable: Boolean,
+         var playbackRes: Int) {
+ 
+diff --git a/app/src/main/java/com/example/android/uamp/viewmodels/MediaItemFragmentViewModel.kt b/app/src/main/java/com/example/android/uamp/viewmodels/MediaItemFragmentViewModel.kt
+index 7088bb8..6b94cc0 100644
+--- a/app/src/main/java/com/example/android/uamp/viewmodels/MediaItemFragmentViewModel.kt
++++ b/app/src/main/java/com/example/android/uamp/viewmodels/MediaItemFragmentViewModel.kt
+@@ -58,8 +58,8 @@ class MediaItemFragmentViewModel(private val mediaId: String,
+             val itemsList = children.map { child ->
+                 MediaItemData(child.mediaId!!,
+                         child.description.title.toString(),
+-                        child.description.subtitle.toString(),
+-                        child.description.iconUri!!,
++                        child.description.subtitle?.toString() ?: "",
++                        child.description.iconUri,
+                         child.isBrowsable,
+                         getResourceForMediaId(child.mediaId!!))
+             }
+diff --git a/media/src/main/java/com/example/android/uamp/media/library/BrowseTree.kt b/media/src/main/java/com/example/android/uamp/media/library/BrowseTree.kt
+index c389450..65add39 100644
+--- a/media/src/main/java/com/example/android/uamp/media/library/BrowseTree.kt
++++ b/media/src/main/java/com/example/android/uamp/media/library/BrowseTree.kt
+@@ -63,9 +63,31 @@ class BrowseTree(musicSource: MusicSource) {
+      */
+     init {
+         musicSource.forEach { mediaItem ->
+-            val albumMediaId = mediaItem.album.urlEncoded
+-            val albumChildren = mediaIdToChildren[albumMediaId] ?: buildAlbumRoot(mediaItem)
++            val albumMediaId = "ALBUM:${mediaItem.album.urlEncoded}"
++            val artistMediaId = "ARTIST:${mediaItem.artist.urlEncoded}"
++            val albumChildren = mediaIdToChildren[albumMediaId] ?: buildSongContainer(mediaItem) { builder ->
++                builder.apply {
++                    id = albumMediaId
++                    title = mediaItem.album
++                    artist = mediaItem.artist
++                    albumArt = mediaItem.albumArt
++                    albumArtUri = mediaItem.albumArtUri?.toString()
++                    flag = MediaItem.FLAG_BROWSABLE
++                }
++                builder.build()
++            }
++            val artistChildren = mediaIdToChildren[artistMediaId] ?: buildSongContainer(mediaItem) { builder ->
++                builder.apply {
++                    id = artistMediaId
++                    title = mediaItem.artist
++                    flag = MediaItem.FLAG_BROWSABLE
++                    //TODO: fill in artist-specific fields for artwork etc.
++                }
++                builder.build()
++            }
++
+             albumChildren += mediaItem
++            artistChildren += mediaItem
+         }
+     }
+ 
+@@ -81,15 +103,8 @@ class BrowseTree(musicSource: MusicSource) {
+      * marking the item as [MediaItem.FLAG_BROWSABLE], since it will have child
+      * node(s) AKA at least 1 song.
+      */
+-    private fun buildAlbumRoot(mediaItem: MediaMetadataCompat): MutableList<MediaMetadataCompat> {
+-        val albumMetadata = MediaMetadataCompat.Builder().apply {
+-            id = mediaItem.album.urlEncoded
+-            title = mediaItem.album
+-            artist = mediaItem.artist
+-            albumArt = mediaItem.albumArt
+-            albumArtUri = mediaItem.albumArtUri?.toString()
+-            flag = MediaItem.FLAG_BROWSABLE
+-        }.build()
++    private fun buildSongContainer(mediaItem: MediaMetadataCompat, buildAction: (MediaMetadataCompat.Builder) -> MediaMetadataCompat): MutableList<MediaMetadataCompat> {
++        val albumMetadata = buildAction.invoke(MediaMetadataCompat.Builder())
+ 
+         // Ensure the root node exists and add this album to the list.
+         val rootList = mediaIdToChildren[UAMP_BROWSABLE_ROOT] ?: mutableListOf()
